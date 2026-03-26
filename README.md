@@ -43,7 +43,7 @@ Chronicle's `udmSearch` API has a hard cap of 10,000 returned events per query.
 
 ### 🧹 Data Normalization & Filtering
 * **Case-Insensitive Deduplication:** Email addresses are immediately converted to lowercase upon extraction. This naturally merges upper and lowercase variants (e.g., `User@` vs `user@`), preventing duplicate playbook executions for the same identity without requiring complex evaluation logic.
-* **Targeted Exclusions:** Includes a strict bypass filter to drop specific customer domains (e.g., `user@gmail.com`), satisfying requirements to shield specific administrative or service accounts from automated suspension logic.
+* **Targeted Exclusions:** Includes a strict bypass filter to drop specific customer domains (e.g., `@gmail.com`), satisfying requirements to shield specific administrative or service accounts from automated suspension logic. See line 139 to adjust this filtering
 
 ### 📖 Code Readability & Maintainability
 * **Global Constants:** "Magic numbers" (lookback periods, chunk sizes, page limits, and token refresh timers) have been moved to global constants at the top of the script. This makes the codebase self-documenting and allows future engineers to tune the integration parameters without digging through the pagination logic.
