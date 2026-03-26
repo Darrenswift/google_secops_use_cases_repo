@@ -1,4 +1,4 @@
-# Google SecOps: Automated Stale Account Suspension
+# Google SecOps: Automated Stale Account Suspension v2 
 
 This repository contains a custom Google SecOps (Chronicle) SOAR integration and playbook designed to automatically detect, warn, and suspend inactive user accounts via Azure Active Directory.
 
@@ -9,13 +9,44 @@ By natively querying Google Chronicle for raw login events, processing the data 
 This workflow is a fully automated, end-to-end solution:
 
 1. **The Detection Engine (Daily Log Pull):** A custom Python connector securely queries the Google SecOps `udmSearch` API. It searches for `USER_LOGIN` events and pulls up to 90 days of history, cleanly handling API pagination for enterprise-scale environments.
-2. **Local Processing & Case Creation:** The connector groups the logs by user, finds the exact timestamp of their most recent login, and calculates how many days have passed since they last authenticated. If a user breaches the inactivity threshold, a case is generated in the SOAR queue.
+2. **Local Processing & Case Creation:** The connector groups the logs by user, finds the exact timestamp of their most recent login, and calculates how many days have passed since they last authenticated. If a user breaches the inactivity threshold, a case is generated in the SOAR queue. If multiple alerts, events will be batched upto 80 alerts in one case (adjust in global constants if required 'CHUNK_SIZE') 
 3. **The Automation Playbook:** The playbook immediately queries **Azure Active Directory** to enrich the user's profile data, including their display name, job title, and their direct manager's contact info.
 4. **The Tiered Response Logic:** Based on the days inactive, the playbook routes the user through a tiered protocol:
-    * **Under 30 Days:** Immediate case closure (False Positive/Warning).
+    * **Under 30 Days:** Immediate case closure (False Positive/Warning). 
     * **30 - 59 Days:** Direct email warning sent to the user.
     * **60 - 89 Days:** Escalation email sent to the user's direct manager.
     * **90+ Days:** Automated account suspension in Azure AD and case closure.
+  
+## Version 2 Enhancements 🚀
+
+## 🚀 Enterprise Enhancements & Features
+
+This connector has been heavily optimized for high-throughput, large-scale Google SecOps environments. It moves beyond standard API polling to include state management, network resilience, and UI protection.
+
+### 📦 Smart Event Batching (Anti-Case Explosion)
+To prevent SOAR UI degradation and alert fatigue, the connector aggregates breached users and chunks them into grouped cases. 
+* **Dynamic Chunking:** Limits cases to **80 events per case**, safely staying under the platform's 90-event ingestion ceiling.
+* **Seamless Playbook Integration:** Passes the grouped events directly to the SOAR Ontology engine, allowing playbooks to seamlessly loop through all users in the batch simultaneously.
+
+### 🏥 Proactive Health Monitoring
+Chronicle's `udmSearch` API has a hard cap of 10,000 returned events per query. 
+* **Blindspot Detection:** If the log volume hits this 10K ceiling, the script automatically spawns a dedicated **Health Alert** case (`SecOps Connector Health`). 
+* **Operational Awareness:** This acts as a "Check Engine" light, actively warning the engineering team that the API query is too broad and logs are potentially being dropped, preventing silent failures and false negatives.
+
+### ⚡ Performance & Compute Optimizations
+* **Lexicographical Sorting:** Removes computationally heavy `datetime` parsing from the main data ingestion loop. The script sorts and compares raw ISO 8601 strings in $O(n)$ time and only executes the math calculation once per unique user at the very end of the run.
+* **Connection Pooling:** Utilizes `requests.Session()` to reuse a single, persistent TCP connection, drastically reducing TLS handshake latency across hundreds of paginated API calls.
+
+### 🛡️ Network Resilience & Reliability
+* **Automatic Retries:** Implements a `urllib3` Retry adapter. If the Google Cloud API throws a `429 Too Many Requests` or `503 Service Unavailable` due to load, the connector automatically backs off and retries.
+* **OAuth Token Failsafe:** Includes a timer check inside the pagination loop. If log extraction runs longer than 50 minutes, the script automatically requests a fresh Google Cloud bearer token, preventing catastrophic `401 Unauthorized` timeouts during massive data pulls.
+
+### 🧹 Data Normalization & Filtering
+* **Case-Insensitive Deduplication:** Email addresses are immediately converted to lowercase upon extraction. This naturally merges upper and lowercase variants (e.g., `User@` vs `user@`), preventing duplicate playbook executions for the same identity without requiring complex evaluation logic.
+* **Targeted Exclusions:** Includes a strict bypass filter to drop specific customer domains (e.g., `user@gmail.com`), satisfying requirements to shield specific administrative or service accounts from automated suspension logic.
+
+### 📖 Code Readability & Maintainability
+* **Global Constants:** "Magic numbers" (lookback periods, chunk sizes, page limits, and token refresh timers) have been moved to global constants at the top of the script. This makes the codebase self-documenting and allows future engineers to tune the integration parameters without digging through the pagination logic.
 
 ---
 
