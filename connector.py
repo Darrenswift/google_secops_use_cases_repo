@@ -42,6 +42,7 @@ def main():
     siemplify.LOGGER.info("Starting Enterprise SecOps Raw Log Parser Connector...")
     
     # --- Extract Parameters from the UI ---
+    # Sanitized for public repository: users must provide their own environment details in the SOAR UI.
     customer_id = siemplify.extract_connector_param(param_name="Customer ID", is_mandatory=True)
     region = siemplify.extract_connector_param(param_name="Region", is_mandatory=True)
     project_id = siemplify.extract_connector_param(param_name="Project ID", is_mandatory=True)
@@ -50,9 +51,9 @@ def main():
     
     api_base_url = f"https://{region.lower()}-chronicle.googleapis.com/v1alpha"
     search_endpoint = f"{api_base_url}/projects/{project_id}/locations/{region.lower()}/instances/{customer_id}:udmSearch"
-    # =========================================================
-    # UDM Query - Insert Filtering to limit results
-    # =========================================================
+
+    # Add more filtering to UDM in order to reduce the amount of results from UDM such as log_type,attribute(s),label(s) etc
+
     raw_query = '''metadata.event_type = "USER_LOGIN"'''
 
     alerts = []
@@ -129,12 +130,16 @@ def main():
                 
                 if not emails or not timestamp_str:
                     continue
-         # =======================================================================================================
-         # Enhancement - Filtering based on specific domain(s) see README
-         # =======================================================================================================        
                     
-                # Performance Enhancement: Lexicographical sort on raw strings
-                for email in emails:
+                for raw_email in emails:
+                    # Normalization: Force lowercase to eliminate exact duplicates
+                    email = raw_email.lower()
+                    
+                    # Filtering: Drop specific domains (Placeholder for GitHub)
+                    if "gmail.com" in email:
+                        continue
+                        
+                    # Performance Enhancement: Lexicographical sort on raw strings
                     if email not in user_last_logins or timestamp_str > user_last_logins[email]:
                         user_last_logins[email] = timestamp_str
             
@@ -205,7 +210,9 @@ def main():
             for user_email, days_inactive in chunk:
                 events_list.append({
                     "EventName": "Inactive Account Flagged",
-                    "DestinationUserName": user_email,
+                    "DestinationUserName": user_email,  # Our clean custom field
+                    "user_name": user_email,            # Global default mapping fallback
+                    "Email": user_email,                # Global default mapping fallback
                     "DaysInactive": days_inactive,
                     "device_product": "SecOps UDM"
                 })
