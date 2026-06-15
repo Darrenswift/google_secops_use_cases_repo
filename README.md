@@ -1,4 +1,4 @@
-# Google SecOps: Automated Stale Account Suspension v2 
+# Google SecOps: Automated Stale Account Suspension v4
 
 This repository contains a custom Google SecOps (Chronicle) SOAR integration and playbook designed to automatically detect, warn, and suspend inactive user accounts via Azure Active Directory.
 
@@ -17,37 +17,31 @@ This workflow is a fully automated, end-to-end solution:
     * **60 - 89 Days:** Escalation email sent to the user's direct manager.
     * **90+ Days:** Automated account suspension in Azure AD and case closure.
   
-## Version 2 Enhancements 🚀
+Release Notes: SecOps Inactive Accounts Connector (v4)
+🚀 Enterprise Enhancements & Features
 
-## 🚀 Enterprise Enhancements & Features
+This connector has been heavily optimized for high-throughput, large-scale Google SecOps environments. It uses Google Security Operations' modern Asynchronous Search API to support high-volume data retrieval, state management, network resilience, and UI protection.
 
-This connector has been heavily optimized for high-throughput, large-scale Google SecOps environments. It moves beyond standard API polling to include state management, network resilience, and UI protection.
+📦 Smart Event Batching (Anti-Case Explosion)
+To prevent SOAR UI degradation and alert fatigue, the connector aggregates breached users and chunks them into grouped cases:
 
-### 📦 Smart Event Batching (Anti-Case Explosion)
-To prevent SOAR UI degradation and alert fatigue, the connector aggregates breached users and chunks them into grouped cases. 
-* **Dynamic Chunking:** Limits cases to **80 events per case**, safely staying under the platform's 90-event ingestion ceiling.
-* **Seamless Playbook Integration:** Passes the grouped events directly to the SOAR Ontology engine, allowing playbooks to seamlessly loop through all users in the batch simultaneously.
-
-### 🏥 Proactive Health Monitoring
-Chronicle's `udmSearch` API has a hard cap of 10,000 returned events per query. 
-* **Blindspot Detection:** If the log volume hits this 10K ceiling, the script automatically spawns a dedicated **Health Alert** case (`SecOps Connector Health`). 
-* **Operational Awareness:** This acts as a "Check Engine" light, actively warning the engineering team that the API query is too broad and logs are potentially being dropped, preventing silent failures and false negatives.
-
-### ⚡ Performance & Compute Optimizations
-* **Lexicographical Sorting:** Removes computationally heavy `datetime` parsing from the main data ingestion loop. The script sorts and compares raw ISO 8601 strings in $O(n)$ time and only executes the math calculation once per unique user at the very end of the run.
-* **Connection Pooling:** Utilizes `requests.Session()` to reuse a single, persistent TCP connection, drastically reducing TLS handshake latency across hundreds of paginated API calls.
-
-### 🛡️ Network Resilience & Reliability
-* **Automatic Retries:** Implements a `urllib3` Retry adapter. If the Google Cloud API throws a `429 Too Many Requests` or `503 Service Unavailable` due to load, the connector automatically backs off and retries.
-* **OAuth Token Failsafe:** Includes a timer check inside the pagination loop. If log extraction runs longer than 50 minutes, the script automatically requests a fresh Google Cloud bearer token, preventing catastrophic `401 Unauthorized` timeouts during massive data pulls.
-
-### 🧹 Data Normalization & Filtering
-* **Case-Insensitive Deduplication:** Email addresses are immediately converted to lowercase upon extraction. This naturally merges upper and lowercase variants (e.g., `User@` vs `user@`), preventing duplicate playbook executions for the same identity without requiring complex evaluation logic.
-* **Targeted Exclusions:** Includes a strict bypass filter to drop specific customer domains (e.g., `@gmail.com`), satisfying requirements to shield specific administrative or service accounts from automated suspension logic. See line 139 to adjust this filtering
-
-### 📖 Code Readability & Maintainability
-* **Global Constants:** "Magic numbers" (lookback periods, chunk sizes, page limits, and token refresh timers) have been moved to global constants at the top of the script. This makes the codebase self-documenting and allows future engineers to tune the integration parameters without digging through the pagination logic.
-
+Dynamic Chunking: Limits cases to 80 events per case, safely staying under the platform's ingestion ceiling.
+Seamless Playbook Integration: Passes the grouped events directly to the SOAR Ontology engine, allowing playbooks to seamlessly loop through all users in the batch simultaneously.
+🏥 Proactive Health Monitoring (Upgraded to 1M Scale)
+Asynchronous API Capacity: Migrated from the synchronous udmSearch API to the asynchronous Search Session API, allowing the connector to retrieve up to 1,000,000 events (compared to the previous 10,000 limit).
+Blindspot Detection: The Health Alert ("Check Engine" light) threshold is now set to the 1,000,000 limit (ASYNC_LIMIT). If the query volume reaches or exceeds this capacity, the connector automatically spawns a dedicated Health Alert case (SecOps Connector Health) to warn the engineering team that the query window is too broad and logs may be dropped.
+⚡ Performance & Compute Optimizations
+Asynchronous Query Execution: Moves away from blocking synchronous calls. The connector issues a POST request to spawn a background search session, polls for completion, and then streams the results, avoiding timeouts.
+Lexicographical Sorting: Removes computationally heavy datetime parsing from the main data ingestion loop. The script sorts and compares raw ISO 8601 strings in $O(n)$ time and only executes the math calculation once per unique user at the end of the run.
+Connection Pooling: Utilizes requests.Session() to reuse persistent TCP connections, reducing TLS handshake latency across paginated API calls.
+🛡️ Network Resilience & Reliability
+Automatic Retries: Implements a urllib3 Retry adapter configured to catch and automatically retry on 429 (Rate Limited) or 5xx server errors. The adapter handles both the initial POST requests and subsequent paginated GET requests.
+OAuth Token Failsafe: Features timer checks in both the polling and pagination loops. If polling or data extraction runs longer than 50 minutes, the script automatically refreshes the bearer token to prevent 401 Unauthorized timeouts during massive data pulls.
+🧹 Data Normalization & Filtering
+Case-Insensitive Deduplication: Email addresses are immediately converted to lowercase upon extraction. This merges variants (e.g., User@ vs user@), preventing duplicate playbook executions for the same identity.
+Targeted Exclusions: Includes standard exclusions to shield specific administrative or service accounts (e.g., service accounts or specific customer domains) from automated suspension logic.
+📖 Code Readability & Maintainability
+Global Constants: All configuration variables (lookback periods, chunk sizes, page limits, token refresh intervals, and async limits) are defined at the top of the script. This makes the codebase self-documenting and allows future tuning without modifying the pagination logic.
 ---
 
 ## ⚙️ Prerequisites
