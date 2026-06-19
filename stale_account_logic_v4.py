@@ -86,10 +86,11 @@ def main():
         # --- Initiate Async Search Operation ---
         body = {
             "query": raw_query,
-            "time_range": {
-                "start_time": start_time,
-                "end_time": end_time
-            }
+            "timeRange": {
+                "startTime": start_time,
+                "endTime": end_time
+            },
+            "dialect": "YL2"
         }
         
         response = session.post(search_endpoint, json=body)

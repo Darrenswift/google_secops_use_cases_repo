@@ -8,7 +8,7 @@ By natively querying Google Chronicle for raw login events, processing the data 
 
 This workflow is a fully automated, end-to-end solution:
 
-1. **The Detection Engine (Daily Log Pull):** A custom Python connector securely queries the Google SecOps `udmSearch` API. It searches for `USER_LOGIN` events and pulls up to 90 days of history, cleanly handling API pagination for enterprise-scale environments.
+1. **The Detection Engine (Daily Log Pull):** A custom Python connector securely queries the Google SecOps **Asynchronous Search API**. It searches for `USER_LOGIN` events and pulls up to 90 days of history, cleanly handling API pagination for enterprise-scale environments.
 2. **Local Processing & Case Creation:** The connector groups the logs by user, finds the exact timestamp of their most recent login, and calculates how many days have passed since they last authenticated. If a user breaches the inactivity threshold, a case is generated in the SOAR queue. If multiple alerts, events will be batched upto 80 alerts in one case (adjust in global constants if required 'CHUNK_SIZE') 
 3. **The Automation Playbook:** The playbook immediately queries **Azure Active Directory** to enrich the user's profile data, including their display name, job title, and their direct manager's contact info.
 4. **The Tiered Response Logic:** Based on the days inactive, the playbook routes the user through a tiered protocol:
@@ -65,7 +65,7 @@ Before configuring the connector in SOAR, ensure you have a Google Cloud Service
    * **Days Inactive Threshold** *(Type: String, Mandatory: Yes)*
    * **Service Account JSON** *(Type: Password, Mandatory: Yes)*
 5. Switch to the **Code** tab and paste the Python script located in `connector.py` 
-6. **🛑 IMPORTANT:** Modify the `raw_query` variable on line 48 of the script to match your specific log sources and vendor telemetry. 
+6. **🛑 IMPORTANT:** Modify the `raw_query` variable on line 55 of the script to match your specific log sources and vendor telemetry. 
 7. Click **Save** and **Publish**.
 
 ### Phase 2: Enable the Connector
@@ -101,7 +101,3 @@ To ensure the Playbook can automatically target the correct users in Azure AD, w
    * **Value:** `Stale Account UDM Search`
 4. Review the **Azure Active Directory** blocks to ensure they point to your active integration instance.
 5. Enable the Playbook.
-
-
-if __name__ == "__main__":
-    main()
