@@ -90,7 +90,8 @@ def main():
                 "startTime": start_time,
                 "endTime": end_time
             },
-            "dialect": "YL2"
+            "dialect": "YL2",
+            "result_limit": ASYNC_LIMIT
         }
         
         response = session.post(search_endpoint, json=body)
