@@ -164,7 +164,10 @@ def main():
             siemplify.LOGGER.info(f"Processed Page {page_count} - Found {events_in_page} events (Total so far: {total_events_processed})")
             
             for result in searched_results:
-                udm = result.get("udm", {})
+                result_row = result.get("resultRow", {})
+                event_record = result_row.get("eventRecord", {})
+                event = event_record.get("event", {})
+                udm = event.get("udm", {})
                 target = udm.get("target", {})
                 user = target.get("user", {})
                 emails = user.get("emailAddresses", user.get("email_addresses", []))
